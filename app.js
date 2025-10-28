@@ -21,7 +21,22 @@ const db = mysql.createConnection({
   ssl: { rejectUnauthorized: false },
 });
 
-const server = http.createServer((req, res) => {
+db.connect((err) => {
+  if (err) {
+    console.error("❌ DB connection failed:", err.code, err.message);
+  } else {
+    console.log("✅ Connected to DB successfully!");
+  }
+});
+
+const server = http.createServer(async (req, res) => {
+  try {
+    await patientService.createTable(db); // waits properly
+  } catch (err) {
+    console.error("Error creating table:", err);
+    return utils.sendResponse(res, 500, "DB setup failed.");
+  }
+
   const parsedUrl = url.parse(req.url, true);
 
   if (req.method === "OPTIONS") {
