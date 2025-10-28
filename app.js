@@ -26,17 +26,11 @@ db.connect((err) => {
     console.error("❌ DB connection failed:", err.code, err.message);
   } else {
     console.log("✅ Connected to DB successfully!");
+    patientService.createTable(db);
   }
 });
 
-const server = http.createServer(async (req, res) => {
-  try {
-    await patientService.createTable(db); // waits properly
-  } catch (err) {
-    console.error("Error creating table:", err);
-    return utils.sendResponse(res, 500, "DB setup failed.");
-  }
-
+const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url, true);
 
   if (req.method === "OPTIONS") {
