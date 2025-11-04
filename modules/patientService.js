@@ -1,25 +1,42 @@
 const utils = require("./utils");
 
-async function createTable(db) {
-  const sql = `
-    CREATE TABLE IF NOT EXISTS patients (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      name VARCHAR(255),
-      age INT,
-      diagnosis VARCHAR(255),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `;
+function createTable(db) {
   return new Promise((resolve, reject) => {
-    db.query(sql, (err) => {
-      if (err) reject(err);
-      else {
-        console.log("✅ Table ensured.");
-        resolve();
+    db.query("CREATE DATABASE IF NOT EXISTS labDB;", (err) => {
+      if (err) {
+        console.error("❌ Failed to create database:", err);
+        return reject(err);
       }
+
+      db.query("USE labDB;", (err2) => {
+        if (err2) {
+          console.error("❌ Failed to select database:", err2);
+          return reject(err2);
+        }
+
+        const createTableSQL = `
+          CREATE TABLE IF NOT EXISTS patient (
+            patientid INT(11) AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(100),
+            dateOfBirth DATETIME
+          ) ENGINE=InnoDB;
+        `;
+
+        db.query(createTableSQL, (err3) => {
+          if (err3) {
+            console.error("❌ Failed to create table:", err3);
+            return reject(err3);
+          }
+
+          console.log("✅ Database and table are ready.");
+          resolve();
+        });
+      });
     });
   });
 }
+
+module.exports = { createTable };
 
 function insertSamplePatients(db, res) {
   const sql = `
