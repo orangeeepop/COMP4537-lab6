@@ -39,11 +39,14 @@ const server = http.createServer((req, res) => {
   }
 
   if (req.method === "POST" && parsedUrl.pathname === insertPath) {
+    patientService.createTable(db);
     patientService.insertSamplePatients(db, res);
   } else if (req.method === "GET" && parsedUrl.pathname === queryPath) {
+    patientService.createTable(db);
     const sql = parsedUrl.query.sql;
     patientService.selectPatients(db, res, sql);
   } else if (req.method === "POST" && parsedUrl.pathname === queryPath) {
+    patientService.createTable(db);
     let body = "";
     req.on("data", (chunk) => (body += chunk));
     req.on("end", () => {
