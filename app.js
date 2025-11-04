@@ -26,11 +26,14 @@ db.connect((err) => {
     console.error("❌ DB connection failed:", err.code, err.message);
   } else {
     console.log("✅ Connected to DB successfully!");
-    patientService.createTable(db);
+    // optional: ensure table at startup
+    patientService.createTable(db).catch((e) =>
+      console.error("❌ Table creation at startup failed:", e.message)
+    );
   }
 });
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   const parsedUrl = url.parse(req.url, true);
 
   if (req.method === "OPTIONS") {
@@ -38,30 +41,42 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (req.method === "POST" && parsedUrl.pathname === insertPath) {
-    patientService.createTable(db);
-    patientService.insertSamplePatients(db, res);
-  } else if (req.method === "GET" && parsedUrl.pathname === queryPath) {
-    patientService.createTable(db);
-    const sql = parsedUrl.query.sql;
-    patientService.selectPatients(db, res, sql);
-  } else if (req.method === "POST" && parsedUrl.pathname === queryPath) {
-    patientService.createTable(db);
-    let body = "";
-    req.on("data", (chunk) => (body += chunk));
-    req.on("end", () => {
-      let sql;
-      try {
-        const parsed = JSON.parse(body);
-        sql = parsed.sql;
-      } catch {
-        return utils.sendResponse(res, 400, "Invalid JSON format.");
-      }
+  try {
+    if (req.method === "POST" && parsedUrl.pathname === insertPath) {
+      await patientService.createTable(db);
+      patientService.insertSamplePatients(db, res);
 
-      patientService.insertPatients(db, res, sql);
-    });
-  } else {
-    utils.sendResponse(res, 404, "Not Found");
+    } else if (req.method === "GET" && parsedUrl.pathname === queryPath) {
+      const sql = parsedUrl.query.sql;
+      await patientService.createTable(db);
+      patientService.selectPatients(db, res, sql);
+
+    } else if (req.method === "POST" && parsedUrl.pathname === queryPath) {
+      let body = "";
+      req.on("data", (chunk) => (body += chunk));
+      req.on("end", async () => {
+        let sql;
+        try {
+          const parsed = JSON.parse(body);
+          sql = parsed.sql;
+        } catch {
+          return utils.sendResponse(res, 400, "Invalid JSON format.");
+        }
+
+        try {
+          await patientService.createTable(db);
+          patientService.insertPatients(db, res, sql);
+        } catch (err) {
+          utils.sendResponse(res, 500, err.message);
+        }
+      });
+
+    } else {
+      utils.sendResponse(res, 404, "Not Found");
+    }
+  } catch (err) {
+    console.error("❌ Error handling request:", err);
+    utils.sendResponse(res, 500, err.message);
   }
 });
 
